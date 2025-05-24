@@ -15,6 +15,7 @@ class PRUDPPacket:
     def get_destination(self) -> int: return self.destination
     def get_packet_type(self) -> int: return self.packet_type
     def get_flags(self) -> int: return self.flags
+    def get_signature(self) -> int: return self.signature
 
     def set_version(self, version: int): self.version = version
     def set_source(self, source: int): self.source = source
@@ -24,6 +25,7 @@ class PRUDPPacket:
     def has_flag(flags: int, flag: int) -> bool: return (flags & flag) != 0
     def add_flag(flags: int, flag: int) -> int: return flags | flag
     def clear_flag(flags: int, flag: int) -> int: return flags & ~flag
+    def set_signature(self, signature: int): return self.signature
 
 
 class PRUDPPacketV0(PRUDPPacket):
