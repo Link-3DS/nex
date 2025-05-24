@@ -110,7 +110,7 @@ class StationURL:
         "address": "address",
         "port": "port",
         "stream": "stream",
-        "type": "transport_type",
+        "type": "type",
         "natm": "natm",
         "natf": "natf",
         "upnp": "upnp",
@@ -121,12 +121,14 @@ class StationURL:
 
     __slots__ = ["scheme", "_fields"]
 
-    def __init__(self, urlstr=None, **kwargs):
-        self.scheme = None
+    def __init__(self, urlstr=None, scheme=None, **kwargs):
+        self.scheme = scheme
         self._fields = dict.fromkeys(self._field_map.values(), "")
 
         if urlstr:
             self.parse(urlstr)
+        if 'scheme' in kwargs and scheme is None:
+            self.scheme = kwargs.pop('scheme')
         for k, v in kwargs.items():
             if k in self._fields:
                 self._fields[k] = v
