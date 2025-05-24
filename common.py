@@ -1,5 +1,18 @@
 import hashlib
 
+SYN_PACKET = 0
+CONNECT_PACKET = 1
+DATA_PACKET = 2
+DISCONNECT_PACKET = 3
+PING_PACKET = 4
+USER_PACKET = 5
+
+FLAG_ACK = 1
+FLAG_RELIABLE = 2
+FLAG_NEED_ACK = 4
+FLAG_HAS_SIZE = 8
+FLAG_MULTI_ACK = 0x200
+
 def rc4(key, data):
     S = list(range(256))
     j = 0
