@@ -37,6 +37,7 @@ class KerberosCipher:
         calc_mac = hmac.new(self.key, enc_part, hashlib.md5).digest()
         return hmac.compare_digest(mac, calc_mac)
 
+
 class KerberosTicket:
     def __init__(self, session_secret=None, pid=None, extra=None):
         self.session_secret = session_secret or b''
@@ -72,6 +73,7 @@ class KerberosTicket:
         cipher = KerberosCipher(key)
         decrypted = cipher.decrypt(data)
         return cls.from_bytes(decrypted)
+
 
 class KerberosTicketInternal:
     def __init__(self, timestamp=None, user_pid=None, session_key=None):
@@ -121,6 +123,7 @@ class KerberosTicketInternal:
         session_key = plain[offset:offset+sk_len]
         timestamp = datetime.utcfromtimestamp(ts_val)
         return cls(timestamp, user_pid, session_key)
+
 
 def derive_kerberos_key(pid, password):
     val = password

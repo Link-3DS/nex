@@ -6,12 +6,12 @@ class RMCRequest:
     FMT_CUSTOM = "<H"
     HEADER_SIZE = 13
 
-    def __init__(self, protocol=0, cid=0, call=0, meth=0, params=b""):
+    def __init__(self, protocol=0, cid=0, call=0, method=0, params=b""):
         self.fields = {
             "protocol": protocol,
             "custom": cid,
             "call": call,
-            "method": meth,
+            "method": method,
             "params": params
         }
 
@@ -21,10 +21,10 @@ class RMCRequest:
     @staticmethod
     def from_bytes(byts):
         if len(byts) < RMCRequest.HEADER_SIZE:
-            raise ValueError("RMCRequest: Data too short")
+            raise ValueError("Data too short")
         sz = struct.unpack_from("<I", byts, 0)[0]
         if sz != len(byts) - 4:
-            raise ValueError("RMCRequest: Size mismatch")
+            raise ValueError("Size mismatch")
 
         pos = 4
         proto_raw = byts[pos]
@@ -80,12 +80,12 @@ class RMCRequest:
         return cls()
 
 class RMCResponse:
-    def __init__(self, protocol=0, cid=0, call=0, meth=0, data=b"", ok=True, err=0):
+    def __init__(self, protocol=0, cid=0, call=0, method=0, data=b"", ok=True, err=0):
         self.data = {
             "protocol": protocol,
             "custom": cid,
             "call": call,
-            "method": meth,
+            "method": method,
             "success": 1 if ok else 0,
             "resp_data": data,
             "error": err
