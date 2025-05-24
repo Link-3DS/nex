@@ -91,9 +91,9 @@ class RMCResponse:
             "error": err
         }
 
-    def set_success(self, meth, data):
+    def set_success(self, method, data):
         self.data["success"] = 1
-        self.data["method"] = meth
+        self.data["method"] = method
         self.data["resp_data"] = data
         self.data["error"] = 0
 

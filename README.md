@@ -7,6 +7,7 @@
 - [ ] PacketV0/V1/Lite
 - [x] Kerberos
 - [x] RMC
+- [x] Errors
 
 ## Example
 ```python
@@ -26,5 +27,5 @@ asyncio.run(main())
 ```
 
 ## Credits
-- PretendoNetwork for the example code with PRUDP.
+- PretendoNetwork for the architecture of the PRUDP rewritten in Python (I must later change it to put my own implementation).
 - Kinnay for anynet streams library.

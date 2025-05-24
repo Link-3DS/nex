@@ -1,7 +1,7 @@
 import re
 import hashlib
-from streams import StreamIn
 from datetime import datetime
+from streams import StreamIn
 
 SYN_PACKET = 0
 CONNECT_PACKET = 1
@@ -15,6 +15,13 @@ FLAG_RELIABLE = 2
 FLAG_NEED_ACK = 4
 FLAG_HAS_SIZE = 8
 FLAG_MULTI_ACK = 0x200
+
+OPTION_ALL_FUNCTIONS = 0xFFFFFFFF
+OPTION_SUPPORTED_FUNCTIONS = 0
+OPTION_CONNECTION_SIGNATURE = 1
+OPTION_FRAGMENT_ID = 2
+OPTION_INITIAL_SEQUENCE_ID = 3
+OPTION_MAX_SUBSTREAM_ID = 4
 
 def rc4(key, data):
     S = list(range(256))

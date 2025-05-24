@@ -62,7 +62,6 @@ class PRUDPServer(PRUDPClient):
         self.clients: Dict[str, PRUDPClient] = {}
 
     def listen(self, address: str):
-        protocol = "udp"
         udp_ip, udp_port = address.split(":")
         udp_port = int(udp_port)
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -87,7 +86,7 @@ class PRUDPServer(PRUDPClient):
             thread = threading.Thread(target=listen_datagram, daemon=True)
             thread.start()
 
-        print(f"PRUDP/NEX server listening on address - {udp_ip}:{udp_port}")
+        print(f"PRUDP Server listening on {udp_ip}:{udp_port}")
         self.emit("Listening", None)
 
         quit_event.wait()
