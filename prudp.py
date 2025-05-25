@@ -267,11 +267,10 @@ class PRUDPServer(PRUDPClient):
     def send(self, packet: PRUDPPacket):
         data = packet.payload
         total_len = len(data)
-        num_frags = total_len // self.fragment_size
+        fragments = total_len // self.fragment_size
 
-        frag_id = 1
-        i = 0
-        while i <= num_frags:
+        fragment_id = 1
+        for _ in range(fragments + 1):
             time.sleep(0.5)
             if len(data) < self.fragment_size:
                 packet.payload = data
@@ -279,7 +278,6 @@ class PRUDPServer(PRUDPClient):
             else:
                 fragment = data[:self.fragment_size]
                 packet.payload = fragment
-                self.send_fragment(packet, frag_id)
+                self.send_fragment(packet, fragment_id)
                 data = data[self.fragment_size:]
-                frag_id += 1
-            i += 1
+                fragment_id += 1

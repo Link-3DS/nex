@@ -224,7 +224,7 @@ class ZLibCompression:
     def decompress(self, data: bytes) -> bytes: return data
 
 
-class AuthenticationUser:
+class User:
     def __init__(self, pid: int, username: str, password: str):
         self.pid = pid
         self.username = username
