@@ -7,7 +7,21 @@ import multiprocessing
 from typing import Dict
 from common import SYN_PACKET, CONNECT_PACKET, DATA_PACKET, DISCONNECT_PACKET, PING_PACKET, FLAG_ACK, FLAG_NEED_ACK, FLAG_RELIABLE, FLAG_HAS_SIZE, FLAG_MULTI_ACK
 
-class PRUDPPacket:
+class PRUDPClient:
+    def __init__(self, address: socket.socket):
+        self.address = address
+        self.secure_key = bytearray()
+        self.session_id = int
+        self.pid = int
+        self.local_station_url = str
+        self.session_id = int
+        self.session_key = bytearray()
+        self.connected = bool
+        self.server_connection_signature = bytearray()
+        self.client_connection_signature = bytearray()
+
+
+class PRUDPPacket(PRUDPClient):
     def __init__(self):
         self.data = bytearray()
         self.version = int
@@ -32,16 +46,6 @@ class PRUDPPacketV1(PRUDPPacket):
         self.supported_functions = int
         self.initial_sequence_id = int
         self.max_substream_id = int
-
-
-class PRUDPClient:
-    def __init__(self, address: socket.socket):
-        self.address = address
-        self.secure_key = bytearray
-        self.session_id = int
-        self.pid = int
-        self.local_station_url = str
-        self.connected = bool
 
 
 class PRUDPServer(PRUDPClient):
@@ -139,8 +143,7 @@ class PRUDPServer(PRUDPClient):
             client.connected = True
             self.emit("Syn", packet)
         elif packet.packet_type == CONNECT_PACKET:
-            # TODO
-            # packet.sender().set_client_connection_signature(packet.connection_signature())
+            packet.client_connection_signature = packet.connection_signature
             self.emit("Connect", packet)
         elif packet.packet_type == DATA_PACKET:
             self.emit("Data", packet)
@@ -181,12 +184,11 @@ class PRUDPServer(PRUDPClient):
             ack_packet.flags |= FLAG_HAS_SIZE
 
             if packet.packet_type == SYN_PACKET:
-                server_connection_signature = os.urandom(16)
-                # TODO
-                # ack_packet.sender().set_server_connection_signature(server_connection_signature)
+                serv_connection_signature = os.urandom(16)
+                ack_packet.server_connection_signature = serv_connection_signature
                 ack_packet.supported_functions = packet.supported_functions
                 ack_packet.max_substream_id = 0
-                ack_packet.connection_signature = server_connection_signature
+                ack_packet.connection_signature = serv_connection_signature
 
             if packet.packet_type == CONNECT_PACKET:
                 ack_packet.connection_signature = bytes(16)
@@ -195,7 +197,7 @@ class PRUDPServer(PRUDPClient):
                 ack_packet.max_substream_id = 0
 
             if packet.packet_type == DATA_PACKET:
-                pass # TODO: Add this
+                pass # TODO 
     
     def emit(self, event: str, packet):
         handlers = self.generic_event_handles.get(event, [])
