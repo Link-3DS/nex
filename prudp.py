@@ -5,69 +5,111 @@ import os
 import inspect
 import threading
 import multiprocessing
+import logging
+import hmac
+import hashlib
+import struct
 from typing import Dict
 from common import SYN_PACKET, CONNECT_PACKET, DATA_PACKET, DISCONNECT_PACKET, PING_PACKET, FLAG_ACK, FLAG_NEED_ACK, FLAG_RELIABLE, FLAG_HAS_SIZE, FLAG_MULTI_ACK
 from rmc import RMCRequest
 
+logger = logging.getLogger(__name__)
+
 class PRUDPClient:
-    def __init__(self, address: socket.socket):
+    def __init__(self, address: socket.socket, server: 'PRUDPServer'):
         self.address = address
+        self.server = server
         self.secure_key = bytearray()
-        self.session_id = int
-        self.pid = int
-        self.local_station_url = str
-        self.session_id = int
+        self.session_id = int()
+        self.pid = int()
+        self.local_station_url = str()
+        self.session_id = int()
         self.session_key = bytearray()
-        self.connected = bool
+        self.signature_key = bytearray()
+        self.signature_base = int()
+        self.connected = bool()
         self.server_connection_signature = bytearray()
         self.client_connection_signature = bytearray()
 
 
-class PRUDPPacket(PRUDPClient):
-    def __init__(self):
-        self.data = bytearray()
-        self.version = int
-        self.source = int
-        self.destination = int
-        self.packet_type = int
-        self.flags = int
-        self.fragment_id = int
+class PRUDPPacket:
+    def __init__(self, client: PRUDPClient, data: bytearray):
+        self.client = client  
+        self.data = data
+        self.version = int()
+        self.source = int()
+        self.destination = int()
+        self.packet_type = int()
+        self.flags = int()
+        self.fragment_id = int()
         self.connection_signature = bytearray()
         self.payload = bytearray()
         self.rmc_request = RMCRequest()
 
 
 class PRUDPPacketV0(PRUDPPacket):
-    def __init__(self, data: bytearray):
-        self.checksum = int
+    def __init__(self, client: PRUDPClient, data: bytearray):
+        super().__init__()
+        self.client = client
+        self.checksum = int()
         self.data = data
+
+    def calculate_checksum(self, data: bytes) -> int:
+        signature_base = self.signature_base
+        temp = 0
+        steps = len(data) // 4
+        for i in range(steps):
+            offset = i * 4
+            temp += struct.unpack_from('<I', data, offset)[0]
+        temp &= 0xFFFFFFFF
+        temp_bytes = struct.pack('<I', temp)
+        checksum = signature_base
+        checksum += sum(data[len(data) & ~3:])
+        checksum += sum(temp_bytes)
+
+        return checksum & 0xFF
+
+        
 
 
 class PRUDPPacketV1(PRUDPPacket):
     def __init__(self):
+        super().__init__()
         self.magic = bytearray()
-        self.substream_id = int
-        self.supported_functions = int
-        self.initial_sequence_id = int
-        self.max_substream_id = int
+        self.substream_id = int()
+        self.supported_functions = int()
+        self.initial_sequence_id = int()
+        self.max_substream_id = int()
+
+    def calculate_signature(packet, header: bytes, connection_signature: bytes, options: bytes, payload: bytes) -> bytes:
+        key = packet.signature_key
+        signature_base = struct.pack('<I', packet.signature_base)
+        mac = hmac.new(key, digestmod=hashlib.md5)
+        mac.update(header[4:])
+        mac.update(packet.session_key)
+        mac.update(signature_base)
+        mac.update(connection_signature)
+        mac.update(options)
+        mac.update(payload)
+        return mac.digest()
+
 
 
 class PRUDPServer(PRUDPClient):
     def __init__(self):
-        super().__init__(None)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.clients: Dict[str, PRUDPClient] = {}
         self.generic_event_handles: Dict[str, list] = {}
         self.prudp_v0_event_handles: Dict[str, list] = {}
         self.prudp_v1_event_handles: Dict[str, list] = {}
-        self.access_key = str
+        self.access_key = str()
         self.prudp_version = 1
-        self.nex_version = int
+        self.nex_version = int()
         self.fragment_size = 1300
-        self.kerberos_password = str
+        self.kerberos_password = str()
         self.kerberos_size = 32
         self.kerberos_derivation = 0
-        self.kerberos_ticket = int
+        self.kerberos_ticket = int()
 
     def listen(self, address: str):
         udp_ip, udp_port = address.split(":")
@@ -101,7 +143,6 @@ class PRUDPServer(PRUDPClient):
 
     def handle_socket_message(self):
         buffer = bytearray(64000)
-
         sock = self.socket
 
         try:
@@ -112,27 +153,19 @@ class PRUDPServer(PRUDPClient):
         discriminator = f"{addr[0]}:{addr[1]}"
 
         if discriminator not in self.clients:
-            new_client = PRUDPClient(addr)
+            new_client = PRUDPClient(addr, self)
             self.clients[discriminator] = new_client
 
         client = self.clients[discriminator]
 
         data = buffer[:length]
 
-        packet = PRUDPPacket()
-        err = None
-        if self.prudp_version == 0:
-            try:
-                packet = PRUDPPacketV0(data)
-            except Exception as e:
-                err = e
-        else:
-            try:
-                packet = PRUDPPacketV1(data)
-            except Exception as e:
-                err = e
-
-        if err is not None:
+        try:
+            if self.prudp_version == 0:
+                packet = PRUDPPacketV0(client, data)
+            else:
+                packet = PRUDPPacketV1(client, data)
+        except Exception:
             return None
 
         if (packet.flags & FLAG_ACK) != 0 or (packet.flags & FLAG_MULTI_ACK) != 0:
@@ -140,7 +173,6 @@ class PRUDPServer(PRUDPClient):
 
         if (packet.flags & FLAG_NEED_ACK) != 0:
             if packet.packet_type != CONNECT_PACKET or (packet.packet_type == CONNECT_PACKET and len(packet.payload) <= 0):
-                import threading
                 threading.Thread(target=self.acknowledge_packet, args=(packet, None)).start()
 
         if packet.packet_type == SYN_PACKET:
@@ -153,7 +185,7 @@ class PRUDPServer(PRUDPClient):
             self.emit("Data", packet)
         elif packet.packet_type == DISCONNECT_PACKET:
             self.emit("Disconnect", packet)
-            self.kick()
+            self.kick(client)
         elif packet.packet_type == PING_PACKET:
             self.emit("Ping", packet)
 
@@ -162,12 +194,14 @@ class PRUDPServer(PRUDPClient):
         return None
     
     def acknowledge_packet(self, packet: PRUDPPacket, payload: bytearray):
+        client = packet.client
+
         ack_packet = PRUDPPacket()
 
         if self.prudp_version == 0:
-            ack_packet = PRUDPPacketV0(None)
+            ack_packet = PRUDPPacketV0(client, None)
         else:
-            ack_packet = PRUDPPacketV1(None)
+            ack_packet = PRUDPPacketV1(client, None)
 
         ack_packet.source = packet.destination
         ack_packet.destination = packet.source
@@ -218,20 +252,20 @@ class PRUDPServer(PRUDPClient):
             for handler in handlers:
                 threading.Thread(target=handler, args=(packet,)).start()
 
-    def kick(self):
-        packet = PRUDPPacket()
-        client = PRUDPClient()
-
+    def kick(self, client: PRUDPClient):
         if self.prudp_version == 0:
-            packet = PRUDPPacketV0(None)
+            packet = PRUDPPacketV0(client, None)
         else:
-            packet = PRUDPPacketV1(None)
+            packet = PRUDPPacketV1(client, None)
 
         self.emit("Kick", packet)
-        client.connected = True
-        discriminator = str(client.address)
+
+        client.connected = False
+
+        discriminator = f"{client.address[0]}:{client.address[1]}"
         if discriminator in self.clients:
             del self.clients[discriminator]
+
 
     def on(self, event: str, handler):
         params = list(inspect.signature(handler).parameters.values())
@@ -249,12 +283,13 @@ class PRUDPServer(PRUDPClient):
         else:
             raise ValueError("Handler type not recognized")
 
-    def send_ping(self):
+    def send_ping(self, client: PRUDPClient):
         ping_packet = PRUDPPacket()
+
         if self.prudp_version == 0:
-            ping_packet = PRUDPPacketV0(None)
+            ping_packet = PRUDPPacketV0(client, None)
         else:
-            ping_packet = PRUDPPacketV1(None)
+            ping_packet = PRUDPPacketV1(client, None)
 
         ping_packet.source = 0xA1
         ping_packet.destination = 0xAF
