@@ -11,8 +11,8 @@
 
 ## Example
 ```python
-from prudp import PRUDPServer
 import asyncio
+from prudp import PRUDPServer
 
 async def main():
     prudp = PRUDPServer()

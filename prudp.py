@@ -1,11 +1,13 @@
 import socket
 import time
+import datetime
 import os
 import inspect
 import threading
 import multiprocessing
 from typing import Dict
 from common import SYN_PACKET, CONNECT_PACKET, DATA_PACKET, DISCONNECT_PACKET, PING_PACKET, FLAG_ACK, FLAG_NEED_ACK, FLAG_RELIABLE, FLAG_HAS_SIZE, FLAG_MULTI_ACK
+from rmc import RMCRequest
 
 class PRUDPClient:
     def __init__(self, address: socket.socket):
@@ -32,11 +34,13 @@ class PRUDPPacket(PRUDPClient):
         self.fragment_id = int
         self.connection_signature = bytearray()
         self.payload = bytearray()
+        self.rmc_request = RMCRequest()
 
 
 class PRUDPPacketV0(PRUDPPacket):
-    def __init__(self):
+    def __init__(self, data: bytearray):
         self.checksum = int
+        self.data = data
 
 
 class PRUDPPacketV1(PRUDPPacket):
@@ -52,18 +56,18 @@ class PRUDPServer(PRUDPClient):
     def __init__(self):
         super().__init__(None)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.clients: Dict[str, PRUDPClient] = {}
         self.generic_event_handles: Dict[str, list] = {}
         self.prudp_v0_event_handles: Dict[str, list] = {}
         self.prudp_v1_event_handles: Dict[str, list] = {}
         self.access_key = str
-        self.prudp_version = int
+        self.prudp_version = 1
         self.nex_version = int
-        self.fragment_size = int
+        self.fragment_size = 1300
         self.kerberos_password = str
-        self.kerberos_size = int
-        self.kerberos_derivation = int
+        self.kerberos_size = 32
+        self.kerberos_derivation = 0
         self.kerberos_ticket = int
-        self.clients: Dict[str, PRUDPClient] = {}
 
     def listen(self, address: str):
         udp_ip, udp_port = address.split(":")
@@ -90,7 +94,7 @@ class PRUDPServer(PRUDPClient):
             thread = threading.Thread(target=listen_datagram, daemon=True)
             thread.start()
 
-        print(f"PRUDP Server listening on {udp_ip}:{udp_port}")
+        print(f"[{datetime.datetime.now()}] PRUDP Server listening on {udp_ip}:{udp_port}")
         self.emit("Listening", None)
 
         quit_event.wait()
@@ -161,9 +165,9 @@ class PRUDPServer(PRUDPClient):
         ack_packet = PRUDPPacket()
 
         if self.prudp_version == 0:
-            ack_packet = PRUDPPacketV0()
+            ack_packet = PRUDPPacketV0(None)
         else:
-            ack_packet = PRUDPPacketV1()
+            ack_packet = PRUDPPacketV1(None)
 
         ack_packet.source = packet.destination
         ack_packet.destination = packet.source
@@ -219,9 +223,9 @@ class PRUDPServer(PRUDPClient):
         client = PRUDPClient()
 
         if self.prudp_version == 0:
-            packet = PRUDPPacketV0()
+            packet = PRUDPPacketV0(None)
         else:
-            packet = PRUDPPacketV1()
+            packet = PRUDPPacketV1(None)
 
         self.emit("Kick", packet)
         client.connected = True
@@ -248,9 +252,9 @@ class PRUDPServer(PRUDPClient):
     def send_ping(self):
         ping_packet = PRUDPPacket()
         if self.prudp_version == 0:
-            ping_packet = PRUDPPacketV0()
+            ping_packet = PRUDPPacketV0(None)
         else:
-            ping_packet = PRUDPPacketV1()
+            ping_packet = PRUDPPacketV1(None)
 
         ping_packet.source = 0xA1
         ping_packet.destination = 0xAF
