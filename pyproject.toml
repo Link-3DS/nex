@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "nex"
 version = "0.1.0"
-description = "PRUDP/NEX library written in Python. "
+description = "PRUDP/NEX library written in Python."
 authors = [
     { name = "Link-3DS Contributors", email = "contact@link3ds.com" }
 ]
@@ -13,5 +13,5 @@ readme = "README.md"
 requires-python = ">=3.6"
 dependencies = []
 
-[project.urls]
-Homepage = "https://github.com/Link-3DS/nex"
+[tool.setuptools]
+py-modules = ["common", "errors", "kerberos", "prudp", "rmc", "streams"]
